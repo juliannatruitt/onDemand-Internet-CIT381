@@ -8,11 +8,11 @@ from paho.mqtt import client as mqtt_client
 from gpiozero import LED
 
 # Define the MQTT Broker Address and the MQTT Topic
-# broker = '192.168.1.66' # IP Address of the MQTT Broker
-# port = 1883
+# broker = '' # IP Address of the MQTT Broker
+# port =
 # mqtt_client_id = f'python-mqtt-{time.time()}'
-# mqtt_username = "truittj3" # This is setup in the Cedalo Console
-# mqtt_password = "1234" # This is setup in the Cedalo Console
+# mqtt_username = "" # This is setup in the Cedalo Console
+# mqtt_password = "" # This is setup in the Cedalo Console
 
 # possible topics to publish:
 topic_high_priority = 'internet/priority/high'
