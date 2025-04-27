@@ -1,69 +1,69 @@
-# CIT 381: Internet of Things, Spring 2025
-# Name: Julianna Truitt, Corey Pitts, Ryan Arnzen, Kolya Cherepenin, & Nick Miller
-# Description: Creating an on demand internet for our final project
+#CIT-381 Final Project InfluxDB Client template
 
-# Import the Required Modules for the Program
-import time
-from paho.mqtt import client as mqtt_client
-from gpiozero import LED
+#You will need to install the InfluxDB Client on your local machine. Python3 must be installed.
+#run the command below to install InfluxDB Client:
+#pip3 install influxdb-client
 
-# Define the MQTT Broker Address and the MQTT Topic
-# broker = '' # IP Address of the MQTT Broker
-# port =
-# mqtt_client_id = f'python-mqtt-{time.time()}'
-# mqtt_username = "" # This is setup in the Cedalo Console
-# mqtt_password = "" # This is setup in the Cedalo Console
+#Run this command in your terminal to save your token as an environment variable:
+#export INFLUXDB_TOKEN=CQxPVcrv6nB7b_W5_-SIJcr4kCOd02w7Z-qxiMQZ1O8GyEDtyIu1QZwT4BkU4UXkkcuO4KMXyUBTSWShkHdIqw==
 
-# possible topics to publish:
-topic_high_priority = 'internet/priority/high'
-topic_low_priority = 'internet/priority/low'
+#import required modules
+from xmlrpc import client
+import influxdb_client, os, time
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client.client.write_api import SYNCHRONOUS
 
-# possible topics to subscribe to (* is dependent on the device that is wanting internet access)
-# topic_device1 = 'internet/request/*'
+#DO NOT MODIFY
+token = "CQxPVcrv6nB7b_W5_-SIJcr4kCOd02w7Z-qxiMQZ1O8GyEDtyIu1QZwT4BkU4UXkkcuO4KMXyUBTSWShkHdIqw=="
+org = "NKU"
+#Uncomment the desired IP.
+url = "http://10.15.8.77:8086"  #Pi at NKU
+#url = "http://172.16.1.100:8086" #Pi at Nick's VPN
 
-# state variable to track when the internet is on and off
-internet_is_on = False
-
-# define relay
-# relay = LED(#)
-
-# Functions for MQTT
-# Function to Connect to the MQTT Broker
-def connect_mqtt() -> mqtt_client:
-    def on_connect(client, userdata, flags, rc):
-        if rc == 0:
-            print("Connected to MQTT Broker!")
-        else:
-            print("Failed to connect, return code %d\n", rc)
-
-    client = mqtt_client.Client(mqtt_client_id)
-    client.username_pw_set(username=mqtt_username, password=mqtt_password)
-    client.on_connect = on_connect
-    client.connect(broker, port)
-    return client
-
-# Function to Publish the Data to the MQTT Broker
-def publish(client, topic, msg):
-    result = client.publish(topic, msg)
-    status = result[0]
-    if status == 0:
-        print(f"Sent `{msg}` to topic `{topic}`")
-    else:
-        print(f"Failed to send message to topic {topic}")
-
-#Function to Subscribe to the MQTT Broker on a Specific Topic
-def subscribe(client: mqtt_client, topic, on_message):
-     client.subscribe(topic)
-     # What to do when a message is recieved.
-     client.on_message = on_message
+write_client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)
+bucket="group1" #Put in your bucket information here (group1-8): e.g., group1, group2, group3...
+write_api = write_client.write_api(write_options=SYNCHRONOUS)
 
 
-# Main Program
-# Connect to the MQTT Broker
-client = connect_mqtt()
-# Subscribe to the devices that will request internet access (not sure which all devices yet...). * can be replaced by the device name
-# subscribe(client, 'internet/request/*')
-# Start the MQTT Client
-client.loop_start()
-# Loop to Publish the Data to the MQTT Broker
-while True:
+#Example for sending data. This defines 5 data points and writes each one to InfluxDB.
+#Each of the 5 points we write has a field and a tag. These tags are not required but are helpful to sort data.
+for value in range(5):
+  point = Point("sensor_data").tag("location", "lab1").field("temperature", value)
+            #Measurement name     Tag key/value pair    Field key/value pair
+  write_api.write(bucket=bucket, org=org, record=point) #Writes the data
+  time.sleep(1) #Waits 1 second to separate points (do not remove)
+
+
+#Example of a simple query
+query_api = write_client.query_api()
+
+#InfluxDB uses Flux for querying the database. Select the bucket, the range (in this case, data from the last 10 minutes)
+#Then specify the measurement (in this case, sensor_data)
+query = """from(bucket: "group1")  
+ |> range(start: -10m)
+ |> filter(fn: (r) => r._measurement == "sensor_data")"""
+tables = query_api.query(query, org=org) #Stores the data in the variable tables
+
+#Prints the table information in the terminal.
+for table in tables:
+  for record in table.records:
+    print(record)
+
+
+#Example of an aggregate query
+#These queries take the values of all rows in a table and use them to perform an aggregate operation.
+#The result is output as a new value in a single-row table.
+query_api = write_client.query_api()
+
+#This query pulls all information from the group1 bucket in the last 10 minutes, filters only sensor_data,
+#Then calculates the mean.
+query = """from(bucket: "group1")
+  |> range(start: -10m)
+  |> filter(fn: (r) => r._measurement == "sensor_data")
+  |> mean()"""
+tables = query_api.query(query, org=org) #Stores information in the table variable.
+
+#Prints the information in the terminal.
+for table in tables:
+    for record in table.records:
+        print(record)
