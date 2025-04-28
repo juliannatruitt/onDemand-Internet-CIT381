@@ -9,8 +9,8 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 token = "CQxPVcrv6nB7b_W5_-SIJcr4kCOd02w7Z-qxiMQZ1O8GyEDtyIu1QZwT4BkU4UXkkcuO4KMXyUBTSWShkHdIqw=="
 org = "NKU"
 # Uncomment the desired IP.
-# url = "http://10.15.8.77:8086"  #Pi at NKU
-url = "http://172.16.1.100:8086"  # Pi at Nick's VPN
+url = "http://10.5.12.45:8086"  #Pi at NKU
+#url = "http://172.16.1.100:8086"  # Pi at Nick's VPN
 
 write_client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)
 bucket = "group1"
@@ -18,8 +18,16 @@ write_api = write_client.write_api(write_options=SYNCHRONOUS)
 query_api = write_client.query_api()
 
 
-def send_internet_request():
+def send_internet_request_high_priority():
     point = Point("internet_request").tag("device_id", "device1").field("requesting", True)
+    write_api.write(bucket="group1", org=org, record=point)
+
+def send_internet_request_high_low():
+    point = Point("internet_request").tag("device_id", "device2").field("requesting", True)
+    write_api.write(bucket="group1", org=org, record=point)
+
+def send_internet_request_high_unknown():
+    point = Point("internet_request").tag("device_id", "device1234").field("requesting", True)
     write_api.write(bucket="group1", org=org, record=point)
 
 
@@ -45,8 +53,11 @@ def check_internet_status():
 while True:
     print("sending request")
     print(check_internet_status())
-    send_internet_request()
-    time.sleep(10)
+    send_internet_request_high_priority()
+    send_internet_request_high_low()
+    time.sleep(25)
+    send_internet_request_high_unknown()
     print(check_internet_status())
     time.sleep(350)
 
+# test request from low priorty, high priority, and unknow device ID
