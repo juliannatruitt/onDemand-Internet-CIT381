@@ -1,19 +1,16 @@
-#CIT-381 Final Project InfluxDB Client template
-
-#You will need to install the InfluxDB Client on your local machine. Python3 must be installed.
-#run the command below to install InfluxDB Client:
-#pip3 install influxdb-client
-
-#Run this command in your terminal to save your token as an environment variable:
-#export INFLUXDB_TOKEN=CQxPVcrv6nB7b_W5_-SIJcr4kCOd02w7Z-qxiMQZ1O8GyEDtyIu1QZwT4BkU4UXkkcuO4KMXyUBTSWShkHdIqw==
+# Class: CIT381, Spring 2025
+# Names: Julianna Truitt, Ryan Arnzen, Corey Pitts, Kolya Cherepenin, and Nick Miller
+# Description: Final project of implementing an on demand internet. Devices that need internet access will request into our influxdb bucket ("group1"). Requests are
+#   handled based on priority (high or low) of the device. High priority devices get internet turned on immediatly when they send a request. Low priority devices will
+#   wait a maximum of 10 minutes (or until at least 3 requests come in) to get the internet turned on. This is so we can wait to see if more requests will come in.
 
 #import required modules
 import influxdb_client, os, time
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
-# from gpiozero import LED
+from gpiozero import LED
 
-# constants (DO NOT MODIFY)
+# constants (DO NOT MODIFY) from team 7 to access influxDB
 token = "CQxPVcrv6nB7b_W5_-SIJcr4kCOd02w7Z-qxiMQZ1O8GyEDtyIu1QZwT4BkU4UXkkcuO4KMXyUBTSWShkHdIqw=="
 org = "NKU"
 # url = "http://10.5.12.45:8086"  #Pi at NKU
@@ -26,16 +23,14 @@ write_api = client.write_api(write_options=SYNCHRONOUS)
 query_api = client.query_api()
 
 # setup GPIO relay for internet control
-relay = "OFF"
-# relay = LED(6)
-
+relay = LED(6)
 
 # variables to track state
-internet_is_on = False
-internet_end_time = 0
-current_requests = []
-queue_end_timer = 0
-queue_timer_started = False
+internet_is_on = False # tracks when internet has been tuned on
+internet_end_time = 0 # tracks when internet will turn off
+current_requests = [] # tracks all the current requests
+low_priority_end_timer = 0 # tracks when the low priority waiting time will end
+low_priority_timer_started = False # tracks when the low priority timer has been started
 
 # priority dictionary
 device_priorities = {
@@ -70,32 +65,32 @@ def check_for_requests():
             print(f"Request from device: {device_id}, Priority: {priority}")
 
 # function to start the 10 minute (max) waiting period for low priority request
-def start_queue_timer():
-    global queue_end_timer, queue_timer_started
+def start_low_priority_timer():
+    global low_priority_end_timer, low_priority_timer_started
 
-    queue_timer_started = True
-    # this set the end of the queue (waiting period for a low priority request to be processed)
-    # to 10 minuted from the current time. This will give low priority requests a maximum of 10 minutes before
-    # internet is turned on to see if more requests come in
-    queue_end_timer = time.time() + 600
+    low_priority_timer_started = True
+    # this sets the end of the waiting period for a low priority request to be processed to 10 minutes from the current time
+    low_priority_end_timer = time.time() + 600
 
 # function to activate internet
 def turn_on_internet():
-    global internet_is_on, relay, queue_timer_started, queue_end_timer, internet_end_time, current_requests
+    global internet_is_on, relay, low_priority_timer_started, low_priority_end_timer, internet_end_time, current_requests
 
     # reset variables to original state
-    queue_timer_started = False
-    queue_end_timer = 0
+    low_priority_timer_started = False
+    low_priority_end_timer = 0
     current_requests = []
 
+    # turn relay on
     internet_is_on = True
-    relay="ON"
+    relay.on()
 
     # notify high priority devices immediately
     point_high = Point("internet_access").tag("priority", "high").field("available", True)
     write_api.write(bucket=bucket, org=org, record=point_high)
     print("High priority devices notified of internet ON")
 
+    # delay 10 seconds before alerting low priority devices
     time.sleep(10)
 
     # notify low priority devices
@@ -112,7 +107,7 @@ def turn_off_internet():
 
     internet_is_on = False
     internet_end_time = 0
-    relay="OFF"
+    relay.off()
 
     # update database that internet is off
     for priority in ["high", "low"]:
@@ -151,11 +146,11 @@ while True:
 
             # will get to this line if there is not at least one high priority request, so we will need to
             # start the queue timer for low priority requests (maximum 10 minutes) if it is not already started
-            if not queue_timer_started:
-                start_queue_timer()
+            if not low_priority_timer_started:
+                start_low_priority_timer()
 
             # turn on internet if there are at least 3 low priority requests or if the 10 minute waiting period is done
-            if low_priority_requests >= 3 or time.time() >= queue_end_timer:
+            if low_priority_requests >= 3 or time.time() >= low_priority_end_timer:
                 turn_on_internet()
                 print("Activating internet for received requests.")
     else:
