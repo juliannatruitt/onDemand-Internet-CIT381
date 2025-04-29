@@ -13,31 +13,31 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 # from gpiozero import LED
 
-# Constants (DO NOT MODIFY)
+# constants (DO NOT MODIFY)
 token = "CQxPVcrv6nB7b_W5_-SIJcr4kCOd02w7Z-qxiMQZ1O8GyEDtyIu1QZwT4BkU4UXkkcuO4KMXyUBTSWShkHdIqw=="
 org = "NKU"
 # url = "http://10.5.12.45:8086"  #Pi at NKU
 url = "http://172.16.1.100:8086" #nicks pi
 bucket = "group1"
 
-# Setup InfluxDB client
+# setup InfluxDB client
 client = InfluxDBClient(url=url, token=token, org=org)
 write_api = client.write_api(write_options=SYNCHRONOUS)
 query_api = client.query_api()
 
-# Setup GPIO relay for internet control
+# setup GPIO relay for internet control
 relay = "OFF"
 # relay = LED(6)
 
 
-# State tracking variables
+# variables to track state
 internet_is_on = False
 internet_end_time = 0
 current_requests = []
 queue_end_timer = 0
 queue_timer_started = False
 
-# Secure priority registry
+# priority dictionary
 device_priorities = {
     "device1": "high",
     "device2": "low",
@@ -45,7 +45,7 @@ device_priorities = {
     "device4": "high",
 }
 
-# Function to check recent internet requests
+# function to check recent internet requests
 def check_for_requests():
     global current_requests
 
@@ -69,6 +69,7 @@ def check_for_requests():
             current_requests.append((device_id, priority))
             print(f"Request from device: {device_id}, Priority: {priority}")
 
+# function to start the 10 minute (max) waiting period for low priority request
 def start_queue_timer():
     global queue_end_timer, queue_timer_started
 
@@ -78,7 +79,7 @@ def start_queue_timer():
     # internet is turned on to see if more requests come in
     queue_end_timer = time.time() + 600
 
-# Function to activate internet access
+# function to activate internet
 def turn_on_internet():
     global internet_is_on, relay, queue_timer_started, queue_end_timer, internet_end_time, current_requests
 
@@ -90,23 +91,22 @@ def turn_on_internet():
     internet_is_on = True
     relay="ON"
 
-
-    # Notify high priority devices immediately
+    # notify high priority devices immediately
     point_high = Point("internet_access").tag("priority", "high").field("available", True)
     write_api.write(bucket=bucket, org=org, record=point_high)
     print("High priority devices notified of internet ON")
 
     time.sleep(10)
 
-    # Notify low priority devices
+    # notify low priority devices
     point_low = Point("internet_access").tag("priority", "low").field("available", True)
     write_api.write(bucket=bucket, org=org, record=point_low)
     print("Low priority devices notified of internet ON")
 
-    # set the internet to turn off in 2 minutes
+    # set the internet to turn off in 2 minutes (or 120 seconds)
     internet_end_time = time.time() + 120
 
-# Function to deactivate internet access
+# function to deactivate internet
 def turn_off_internet():
     global internet_is_on, relay, internet_end_time
 
@@ -114,7 +114,7 @@ def turn_off_internet():
     internet_end_time = 0
     relay="OFF"
 
-    # Update database about internet off state
+    # update database that internet is off
     for priority in ["high", "low"]:
         point_off = Point("internet_access").tag("priority", priority).field("available", False)
         write_api.write(bucket=bucket, org=org, record=point_off)
@@ -130,11 +130,11 @@ while True:
         if current_requests:
 
             # we have to set these to 0 before counting requests each time or else it will keep counting the
-            # same request multiple times. when we initalize it to 0 before counting each time, we get an accurate
-            # number of the amount of requests being recieved
+            # same request multiple times if we don't
             high_priority_requests = 0
             low_priority_requests = 0
 
+            # counts how many low and high priority requests there are
             for request in current_requests:
                 if request[1] == "high":
                     high_priority_requests = high_priority_requests + 1
