@@ -93,13 +93,14 @@ def test_send_three_low_requests_turns_on_internet():
 
 
 while True:
+    # IMPORTANT NOTE: main.py must be running for these tests to work
+    # IMPORTANT NOTE: make sure you wait for the internet to turn off before stopping the program and running another test. If the internet is still on and you try to
+    # run another test, there is a possibility it could produce incorrect results.
+
     # Run tests by uncommenting which test you want to run (should only run 1 test at a time)
     # The time.sleep(1000) is set to allow for the test to run and it gives it more than enough time to run
     # (the sleep time is high due to the method test_to_send_one_low_request_and_wait_for_timer_to_end(), which needs 10 minutes to allow
     # for the time period to end and the internet to be turned on)
-
-    # IMPORTANT NOTE: make sure you wait for the internet to turn off before stopping the program and running another test. If the internet is still on and you try to
-    # run another test, there is a possibility it could produce incorrect results.
 
     test_to_send_one_low_request_and_wait_for_timer_to_end()
     # test_sending_one_high_request_turns_internet_on_immediately()
