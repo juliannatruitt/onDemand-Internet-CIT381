@@ -13,8 +13,8 @@ from gpiozero import LED
 # constants (DO NOT MODIFY) from team 7 to access influxDB
 token = "CQxPVcrv6nB7b_W5_-SIJcr4kCOd02w7Z-qxiMQZ1O8GyEDtyIu1QZwT4BkU4UXkkcuO4KMXyUBTSWShkHdIqw=="
 org = "NKU"
-# url = "http://10.5.12.45:8086"  #Pi at NKU
-url = "http://172.16.1.100:8086" #nicks pi
+url = "http://10.5.12.45:8086"  #Pi at NKU
+#url = "http://172.16.1.100:8086" #nicks pi
 bucket = "group1"
 
 # setup InfluxDB client
@@ -138,7 +138,7 @@ while True:
             print(f"number of high requests: ", high_priority_requests)
             print(f"number of low priority requests: ", low_priority_requests)
 
-            # if there is a high priority request, we immediatly turn on the internet
+            # if there is a high priority request, we immediately turn on the internet
             if high_priority_requests > 0:
                 turn_on_internet()
                 print("Activating internet for received requests.")
